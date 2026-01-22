@@ -13,9 +13,12 @@ from mtcnn import MTCNN
 
 detector = MTCNN()
 
-INPUT_DIR = "/content/drive/MyDrive/dataset/dataset/train"
-OUTPUT_DIR = "/content/drive/MyDrive/dataset/dataset/preprocessed"
+#directory paths where images are going to be stored
+BASE_DIR = r"D:\face_recognition\dataset"
+INPUT_DIR = os.path.join(BASE_DIR, "train")
+OUTPUT_DIR = os.path.join(BASE_DIR, "preprocessed")
 IMG_SIZE = 224
+
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -31,7 +34,17 @@ for person in os.listdir(INPUT_DIR):
         if img is None:
             continue
 
+        #img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # ---- LIMIT IMAGE SIZE (CRITICAL FIX) ----
+        MAX_DIM = 800  # safe value
+        h, w, _ = img_rgb.shape
+        scale = MAX_DIM / max(h, w)
+
+        if scale < 1:
+            img_rgb = cv2.resize(img_rgb, (int(w * scale), int(h * scale)))
+
         faces = detector.detect_faces(img_rgb)
 
         if len(faces) == 0:
