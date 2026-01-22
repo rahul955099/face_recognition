@@ -3,24 +3,22 @@
 #!pip install mtcnn opencv-python
 
 
-
-#Next Preprocessing Code
-
 import cv2
 import os
 import numpy as np
 from mtcnn import MTCNN
 
-detector = MTCNN()
+# FIXED BASE PATH
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-#directory paths where images are going to be stored
-BASE_DIR = r"D:\face_recognition\dataset"
-INPUT_DIR = os.path.join(BASE_DIR, "train")
-OUTPUT_DIR = os.path.join(BASE_DIR, "preprocessed")
+INPUT_DIR = os.path.join(BASE_DIR, "dataset", "train")
+OUTPUT_DIR = os.path.join(BASE_DIR, "dataset", "preprocessed")
 IMG_SIZE = 224
 
-
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+detector = MTCNN()
+
 
 for person in os.listdir(INPUT_DIR):
     person_path = os.path.join(INPUT_DIR, person)

@@ -1,11 +1,15 @@
 import tensorflow as tf
+import os
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 4
 EPOCHS = 20
-DATA_DIR = "dataset/preprocessed" #trained on MTCNN-cropped faces, not raw images.
-MODEL_PATH = "face_recognition_model.h5"
+
+DATA_DIR = os.path.join(BASE_DIR, "dataset", "preprocessed")
+MODEL_PATH = os.path.join(BASE_DIR, "face_recognition_model.h5")
+CLASS_PATH = os.path.join(BASE_DIR, "class_names.txt")
 
 
 
@@ -95,11 +99,10 @@ history = model.fit(
 
 
 model.save(MODEL_PATH)
-print(f"Model saved as {MODEL_PATH}")
 
-
-with open("class_names.txt", "w") as f:
+with open(CLASS_PATH, "w") as f:
     for name in class_names:
         f.write(name + "\n")
 
-print("Class names saved")
+print("✔ Model saved to:", MODEL_PATH)
+print("✔ Class names saved to:", CLASS_PATH)
