@@ -1,12 +1,10 @@
 import tensorflow as tf
-import os
-
 
 
 IMG_SIZE = (224, 224)
 BATCH_SIZE = 4
 EPOCHS = 20
-DATA_DIR = "processed_dataset/train"
+DATA_DIR = "dataset/preprocessed" #trained on MTCNN-cropped faces, not raw images.
 MODEL_PATH = "face_recognition_model.h5"
 
 
@@ -37,8 +35,9 @@ print("Classes:", class_names)
 
 
 AUTOTUNE = tf.data.AUTOTUNE
-train_ds = train_ds.cache().shuffle(100).prefetch(buffer_size=AUTOTUNE)
-val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
+train_ds = train_ds.shuffle(100).cache().prefetch(AUTOTUNE)#
+val_ds = val_ds.cache().prefetch(AUTOTUNE)#
+
 
 
 
@@ -79,11 +78,19 @@ model.compile(
 )
 
 model.summary()
+#Prevents losing best model if training fluctuates
+checkpoint = tf.keras.callbacks.ModelCheckpoint(
+    MODEL_PATH,
+    monitor="val_accuracy",
+    save_best_only=True,
+    verbose=1
+)
 
 history = model.fit(
     train_ds,
     validation_data=val_ds,
-    epochs=EPOCHS
+    epochs=EPOCHS,
+    callbacks=[checkpoint]
 )
 
 
