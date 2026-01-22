@@ -1,10 +1,10 @@
-first install this
+#first install this
 
-!pip install mtcnn opencv-python
+#!pip install mtcnn opencv-python
 
 
 
-Next Preprocessing Code
+#Next Preprocessing Code
 
 import cv2
 import os
