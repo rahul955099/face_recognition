@@ -1,0 +1,5 @@
+Model Complexity Reduction in Bayesian Sensor Calibration and Its Relation to Principal Component Analysis
+
+Spatial Upsampling of Head-Related Impulse Responses via Elevation-Wise Encoder-Decoder Networks
+
+LEMON: Localized Editing With Mesh Optimization and Neural Shaders
