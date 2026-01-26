@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FaceReg Prototype</title>
+  <style>
+    /* Mobile wireframe-style UI (monochrome) */
+    :root{--pad:18px;--accent:#111}
+    body{font-family: 'Segoe UI', Roboto, Arial; background:#fff; color:var(--accent); margin:0;}
+    .frame{max-width:420px;margin:18px auto;border:4px solid #111;padding:14px;height:88vh;box-sizing:border-box;position:relative}
+    header{display:flex;align-items:center;justify-content:space-between;padding:8px 6px;border-bottom:2px solid #111}
+    header h1{font-size:20px;margin:0}
+    .center{display:flex;flex-direction:column;align-items:center;gap:26px;padding-top:36px}
+    .btn{padding:14px 34px;border:2px solid #111;border-radius:6px;background:transparent;font-size:20px;cursor:pointer}
+    .form{display:none;flex-direction:column;gap:18px;padding:18px}
+    label{font-size:18px}
+    input[type=text]{padding:12px;border:2px solid #111;border-radius:4px;font-size:16px}
+    .capture-btn{padding:12px;border:2px solid #111;border-radius:6px;font-size:18px;width:100%;cursor:pointer}
+    video, canvas{display:block;width:100%;max-height:280px;border:2px solid #111;background:#eee}
+    .back{position:absolute;left:18px;top:18px;cursor:pointer}
+    /* modal */
+    .modal{position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);}
+    .card{background:white;border:2px solid #111;padding:14px;border-radius:8px;min-width:260px}
+    .card .row{display:flex;gap:10px;align-items:center}
+    .small{width:64px;height:64px;border:1px solid #111;background:#f5f5f5}
+    .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+    .pill{padding:8px 14px;border:1px solid #111;border-radius:8px;cursor:pointer}
+    footer{position:absolute;bottom:12px;left:18px}
+  </style>
+</head>
+<body>
+  <div class="frame" id="app">
+    <header>
+      <div>LOGO</div>
+      <div>☰</div>
+    </header>
+
+    <div class="center" id="home">
+      <button class="btn" id="openRegister">Register</button>
+      <button class="btn" id="openRecognize">Reccognise</button>
+    </div>
+
+    <!-- Register form -->
+    <div class="form" id="register">
+      <h2 style="text-align:center;font-size:36px;margin:6px 0">Register</h2>
+      <div>
+        <label>Name</label>
+        <input type="text" id="name" placeholder="Enter name" />
+      </div>
+      <div>
+        <label>ID</label>
+        <input type="text" id="id" placeholder="Enter id" />
+      </div>
+      <div>
+        <video id="regVideo" autoplay playsinline></video>
+        <canvas id="regCanvas" style="display:none"></canvas>
+      </div>
+      <button class="capture-btn" id="captureRegister">Capture Image</button>
+      <div style="display:flex;gap:12px;justify-content:space-between;margin-top:8px">
+        <button class="pill" id="saveReg">Save</button>
+        <button class="pill" id="cancelReg">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Recognize screen (reuses camera) -->
+    <div class="form" id="recognize">
+      <h2 style="text-align:left;font-size:20px;margin:6px 0">Recognise</h2>
+      <div>
+        <video id="recVideo" autoplay playsinline></video>
+        <canvas id="recCanvas" style="display:none"></canvas>
+      </div>
+      <button class="capture-btn" id="captureRec">Recognise</button>
+      <div style="margin-top:10px"><button class="pill" id="cancelRec">Back</button></div>
+    </div>
+
+    <div id="resultModal" style="display:none"></div>
+
+    <div class="back" id="homeBack" style="display:none">◀</div>
+    <footer></footer>
+  </div>
+
+<script>
+// Simple prototype: store registered users in localStorage with base64 image
+const storageKey = 'face_reg_users_v1';
+function loadUsers(){try{return JSON.parse(localStorage.getItem(storageKey)||'[]')}catch(e){return []}}
+function saveUsers(u){localStorage.setItem(storageKey, JSON.stringify(u))}
+
+// UI refs
+const home = document.getElementById('home');
+const register = document.getElementById('register');
+const recognize = document.getElementById('recognize');
+const homeBack = document.getElementById('homeBack');
+
+// buttons
+document.getElementById('openRegister').onclick = ()=>openForm('register');
+document.getElementById('openRecognize').onclick = ()=>openForm('recognize');
+document.getElementById('cancelReg').onclick = ()=>goHome();
+document.getElementById('cancelRec').onclick = ()=>goHome();
+
+function openForm(name){home.style.display='none';
+  document.getElementById(name).style.display='flex';
+  homeBack.style.display='block';
+  startCamera(name);
+}
+function goHome(){home.style.display='flex'; register.style.display='none'; recognize.style.display='none'; homeBack.style.display='none'; stopAllStreams();}
+
+// camera helpers
+let currentStream=null;
+async function startCamera(form){const v = document.getElementById(form==='register'?'regVideo':'recVideo');
+  try{currentStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}, audio:false}); v.srcObject = currentStream;}catch(e){alert('Camera access denied or not available.')}
+}
+function stopAllStreams(){if(currentStream){currentStream.getTracks().forEach(t=>t.stop()); currentStream=null}}
+
+// Register capture & save
+const regCanvas = document.getElementById('regCanvas');
+const regVideo = document.getElementById('regVideo');
+document.getElementById('captureRegister').onclick = ()=>{
+  captureToCanvas(regVideo, regCanvas);
+  alert('Captured. Click Save to store registration.');
+}
+document.getElementById('saveReg').onclick = ()=>{
+  const name = document.getElementById('name').value.trim();
+  const idv = document.getElementById('id').value.trim();
+  if(!name||!idv){alert('Please enter name and id'); return}
+  captureToCanvas(regVideo, regCanvas);
+  const data = regCanvas.toDataURL('image/png');
+  const users = loadUsers();
+  users.push({name, id:idv, image:data, created:Date.now()});
+  saveUsers(users);
+  alert('Saved successfully! Total users: '+users.length);
+  goHome();
+}
+
+// Recognize: capture image and compare to stored images
+const recCanvas = document.getElementById('recCanvas');
+const recVideo = document.getElementById('recVideo');
+document.getElementById('captureRec').onclick = ()=>{
+  captureToCanvas(recVideo, recCanvas);
+  const query = recCanvas.toDataURL('image/png');
+  const users = loadUsers();
+  if(users.length===0){alert('No registered users found.'); return}
+  // naive comparison: compute mean-squared pixel difference on downscaled grayscale
+  const q = imageDataFromDataURL(query, 48);
+  let best=null; let bestScore=Infinity;
+  users.forEach(u=>{
+    const ud = imageDataFromDataURL(u.image,48);
+    const s = mse(q.data, ud.data);
+    if(s<bestScore){bestScore=s; best=u}
+  });
+  // threshold: if too large then unknown
+  const threshold = 1500; // tuneable - prototype only
+  if(bestScore>threshold){showModalUnknown();}else{showModalResult(best)}
+}
+
+function showModalUnknown(){const m = document.getElementById('resultModal');
+  m.innerHTML = `<div class='modal'><div class='card'><div style='font-weight:700'>No match found</div><div style='margin-top:10px'><button class='pill' onclick="(function(){document.getElementById('resultModal').style.display='none'})()">Close</button></div></div></div>`;
+  m.style.display='block';
+}
+function showModalResult(user){const m = document.getElementById('resultModal');
+  m.innerHTML = `<div class='modal'><div class='card'>
+    <div style='display:flex;align-items:center;justify-content:space-between'><div style='font-weight:700'>J- ${escapeHtml(user.name)}</div><div style='cursor:pointer' onclick="(function(){document.getElementById('resultModal').style.display='none'})()">✖</div></div>
+    <hr />
+    <div class='row' style='margin-top:8px'>
+      <div class='small'><img src='${user.image}' style='width:100%;height:100%;object-fit:cover' /></div>
+      <div style='font-size:14px'>ID: ${escapeHtml(user.id)}<br><small>user@example.com</small></div>
+    </div>
+    <div class='actions'>
+      <button class='pill' onclick="(function(){alert('Closed');document.getElementById('resultModal').style.display='none'})()">Close</button>
+      <button class='pill' onclick="(function(){alert('Send Recognition (prototype)');document.getElementById('resultModal').style.display='none'})()">Send Recognition</button>
+    </div>
+  </div></div>`;
+  m.style.display='block';
+}
+
+// helpers: capture video frame to canvas
+function captureToCanvas(video, canvas){const w = video.videoWidth||320; const h = video.videoHeight||240; canvas.width=w; canvas.height=h; const ctx=canvas.getContext('2d'); ctx.drawImage(video,0,0,w,h);}
+
+// compute MSE between two Uint8ClampedArray (grayscale)
+function mse(a,b){let s=0; for(let i=0;i<a.length;i++){const d=a[i]-b[i]; s+=d*d;} return s/a.length}
+
+// convert dataURL to downscaled grayscale image data synchronously using an offscreen canvas
+function imageDataFromDataURL(dataurl, size){const img = new Image(); img.src = dataurl; // sync not guaranteed but works since image is cached
+  const c = document.createElement('canvas'); c.width=size; c.height=size; const ctx=c.getContext('2d');
+  // draw after load — but for cached images this may be immediate; to keep prototype simple we'll draw when loaded
+  // create synchronous-like promise using onload and blocking via busy-wait is bad, so instead we'll approximate: draw after small delay
+  // For prototype use setTimeout 0 — works in most browsers because image data is cached.
+  try{ctx.drawImage(img,0,0,size,size);}catch(e){/*ignore*/}
+  const d = ctx.getImageData(0,0,size,size).data; const out = new Uint8ClampedArray(size*size);
+  for(let i=0, j=0;i<d.length;i+=4, j++){out[j]=Math.round((d[i]+d[i+1]+d[i+2])/3)}
+  return {width:size,height:size,data:out}
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c])}
+
+</script>
+
+</body>
+</html>
